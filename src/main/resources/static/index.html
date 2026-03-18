@@ -281,13 +281,21 @@
 
 <script>
   const API = 'http://localhost:8080/api';
-  let allClaims = [], visNet = null, selectedId = null, isDark = false;
+  let allClaims = [], visNet = null, selectedId = null;
+
+  // Restore theme
+  let isDark = localStorage.getItem('theme') === 'dark';
+  if (isDark) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('themeBtn').textContent = '☀️ Light';
+  }
 
   // ── THEME ──
   function toggleTheme() {
     isDark = !isDark;
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     document.getElementById('themeBtn').textContent = isDark ? '☀️ Light' : '🌙 Dark';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
     if (visNet) { visNet.destroy(); visNet = null; buildGraph(); }
   }
 
@@ -297,6 +305,7 @@
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
     document.getElementById('view-' + v).classList.add('active');
     btn.classList.add('active');
+    localStorage.setItem('lastView', v);
     if (v === 'admin') loadAdmin();
   }
 
@@ -627,6 +636,19 @@
   setInterval(() => {
     if (document.getElementById('view-admin').classList.contains('active')) loadAdmin();
   }, 4000);
+
+  // Restore last view on load
+  document.addEventListener('DOMContentLoaded', () => {
+    initResize();
+    const lastView = localStorage.getItem('lastView') || 'client';
+    if (lastView === 'admin') {
+      document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.getElementById('view-admin').classList.add('active');
+      document.querySelectorAll('.tab')[1].classList.add('active');
+      loadAdmin();
+    }
+  });
 </script>
 </body>
 </html>
