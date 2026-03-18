@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FraudGraph</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#f2f2f7; --surface:#fff; --surface2:#f5f5f7; --surface3:#ebebf0;
+      --border:rgba(0,0,0,0.08); --border2:rgba(0,0,0,0.05);
+      --text:#1c1c1e; --text2:#3a3a3c; --text3:#8e8e93; --accent:#007aff;
+      --red:#ff3b30; --red-bg:#fff1f0; --red-border:#ffd5d3;
+      --orange:#ff9500; --orange-bg:#fff8ed; --orange-border:#ffe5b4;
+      --green:#34c759; --green-bg:#f0fdf4; --green-border:#bbf7d0;
+      --radius:12px; --radius-sm:8px;
+      --shadow:0 1px 3px rgba(0,0,0,0.06),0 2px 8px rgba(0,0,0,0.04);
+    }
+    [data-theme="dark"] {
+      --bg:#000; --surface:#1c1c1e; --surface2:#2c2c2e; --surface3:#3a3a3c;
+      --border:rgba(255,255,255,0.1); --border2:rgba(255,255,255,0.06);
+      --text:#fff; --text2:#ebebf0; --text3:#636366; --accent:#0a84ff;
+      --red:#ff453a; --red-bg:rgba(255,69,58,.15); --red-border:rgba(255,69,58,.3);
+      --orange:#ff9f0a; --orange-bg:rgba(255,159,10,.15); --orange-border:rgba(255,159,10,.3);
+      --green:#30d158; --green-bg:rgba(48,209,88,.15); --green-border:rgba(48,209,88,.3);
+      --shadow:0 1px 3px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3);
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+    body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:13px;line-height:1.5}
+
+    /* TITLEBAR */
+    .titlebar{height:52px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:100}
+    .brand{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:var(--text)}
+    .brand-icon{width:26px;height:26px;background:var(--text);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px}
+    .tabs{display:flex;background:var(--surface3);border-radius:8px;padding:3px;gap:2px}
+    .tab{padding:5px 16px;border-radius:6px;border:none;background:transparent;font-family:inherit;font-size:12.5px;font-weight:500;color:var(--text3);cursor:pointer;transition:all .15s}
+    .tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+    .theme-btn{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);font-family:inherit}
+    .theme-btn:hover{background:var(--surface3)}
+
+    /* VIEWS */
+    .view{display:none}
+    .view.active{display:block}
+
+    /* CLIENT */
+    .client-wrap{max-width:560px;margin:40px auto;padding:0 20px 60px}
+    .client-header{margin-bottom:24px}
+    .client-header h1{font-size:22px;font-weight:600;letter-spacing:-.5px;margin-bottom:4px}
+    .client-header p{color:var(--text3);font-size:13px}
+    .form-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+    .form-section{padding:18px 20px 0}
+    .section-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px}
+    .form-divider{height:1px;background:var(--border2);margin:18px 0 0}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .form-row.single{grid-template-columns:1fr}
+    .form-group{display:flex;flex-direction:column;gap:4px}
+    label{font-size:12px;font-weight:500;color:var(--text2)}
+    input,textarea{border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 11px;font-family:inherit;font-size:13px;color:var(--text);background:var(--surface2);outline:none;transition:all .15s}
+    input:focus,textarea:focus{border-color:var(--accent);background:var(--surface);box-shadow:0 0 0 3px rgba(0,122,255,.12)}
+    textarea{resize:vertical;min-height:72px}
+    .form-footer{padding:16px 20px 20px;display:flex;flex-direction:column;gap:10px}
+    .submit-btn{width:100%;padding:10px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .15s;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+    .submit-btn:hover{background:var(--surface2)}
+    .submit-btn:disabled{opacity:.45;cursor:not-allowed}
+    .demo-row{display:flex;gap:8px}
+    .demo-btn{flex:1;padding:8px 10px;border-radius:var(--radius-sm);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;border:1px dashed;background:transparent;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+    .demo-btn.clean{color:var(--green);border-color:var(--green-border)}
+    .demo-btn.clean:hover{background:var(--green-bg)}
+    .demo-btn.fraud{color:var(--red);border-color:var(--red-border)}
+    .demo-btn.fraud:hover{background:var(--red-bg)}
+    .success-card{display:none;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:40px 24px;text-align:center}
+    .success-icon{width:52px;height:52px;background:var(--green-bg);border:1px solid var(--green-border);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px}
+    .success-card h2{font-size:17px;font-weight:600;margin-bottom:6px}
+    .success-card p{color:var(--text3);font-size:13px;margin-bottom:16px}
+    .ref-pill{display:inline-block;padding:5px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;font-family:monospace;font-size:13px;color:var(--text2);margin-bottom:20px}
+    .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.2);border-top-color:var(--text);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+    [data-theme="dark"] .spinner{border:2px solid rgba(255,255,255,.2);border-top-color:#fff}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ADMIN — simple fixed layout */
+    #view-admin.active{display:block;position:relative}
+    .admin-layout{
+      display:grid;
+      grid-template-columns:272px 5px 1fr 5px 320px;
+      height:calc(100vh - 52px);
+      overflow:hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;min-width:0}
+    .sidebar-header{padding:14px 14px 12px;border-bottom:1px solid var(--border2)}
+    .sidebar-title{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px}
+    .stats-row{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+    .stat-item{flex:1;padding:8px 6px;text-align:center;border-right:1px solid var(--border)}
+    .stat-item:last-child{border-right:none}
+    .stat-num{font-size:20px;font-weight:700;line-height:1;margin-bottom:2px}
+    .stat-item.red .stat-num{color:var(--red)}
+    .stat-item.orange .stat-num{color:var(--orange)}
+    .stat-item.green .stat-num{color:var(--green)}
+    .stat-label{font-size:10px;color:var(--text3);font-weight:500}
+    .claims-list{flex:1;overflow-y:auto}
+    .claim-item{padding:10px 14px;border-bottom:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s}
+    .claim-item:hover{background:var(--surface2)}
+    .claim-item.active{background:rgba(0,122,255,.08)}
+    [data-theme="dark"] .claim-item.active{background:rgba(10,132,255,.15)}
+    .risk-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+    .risk-dot.HIGH{background:var(--red)}
+    .risk-dot.MEDIUM{background:var(--orange)}
+    .risk-dot.LOW{background:var(--green)}
+    .claim-meta{flex:1;min-width:0}
+    .claim-ref{font-family:monospace;font-size:11px;color:var(--text3);margin-bottom:1px}
+    .claim-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .claim-amt{font-size:11px;color:var(--text3);margin-top:1px}
+    .risk-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;flex-shrink:0}
+    .risk-tag.HIGH{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+    .risk-tag.MEDIUM{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-border)}
+    .risk-tag.LOW{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+    .new-tag{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:var(--accent);color:#fff;margin-left:4px}
+
+    /* RESIZE HANDLES */
+    .resize-handle{background:var(--border2);cursor:col-resize;transition:background .15s}
+    .resize-handle:hover,.resize-handle.active{background:var(--accent)}
+
+    /* GRAPH */
+    .graph-area{display:grid;grid-template-rows:auto 1fr;overflow:hidden;background:var(--surface2);min-width:0;position:relative}
+    .graph-toolbar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+    .graph-toolbar-title{font-size:12px;font-weight:600;color:var(--text)}
+    .graph-legend{display:flex;gap:12px;flex-wrap:wrap}
+    .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+    .legend-dot{width:7px;height:7px;border-radius:50%}
+    #network-container{width:100%;height:100%;background:#fff;overflow:hidden;min-height:0}
+    [data-theme="dark"] #network-container{background:#111}
+
+    /* DETAIL */
+    .detail-panel{background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+    .detail-header{padding:14px 16px 10px;border-bottom:1px solid var(--border2);font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;position:sticky;top:0;background:var(--surface);z-index:1}
+    .detail-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);text-align:center;padding:32px 20px;gap:8px}
+    .detail-body{padding:14px;display:flex;flex-direction:column;gap:12px}
+    .risk-banner{border-radius:var(--radius-sm);padding:12px 14px;display:flex;align-items:center;gap:12px}
+    .risk-banner.HIGH{background:var(--red-bg);border:1px solid var(--red-border)}
+    .risk-banner.MEDIUM{background:var(--orange-bg);border:1px solid var(--orange-border)}
+    .risk-banner.LOW{background:var(--green-bg);border:1px solid var(--green-border)}
+    .risk-banner-icon{font-size:20px}
+    .risk-banner-title{font-size:13px;font-weight:700}
+    .risk-banner.HIGH .risk-banner-title{color:var(--red)}
+    .risk-banner.MEDIUM .risk-banner-title{color:var(--orange)}
+    .risk-banner.LOW .risk-banner-title{color:var(--green)}
+    .risk-banner-sub{font-size:11px;color:var(--text3);margin-top:2px}
+    .status-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+    .status-badge.APPROVED{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+    .status-badge.ESCALATED{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+    .status-badge.INVESTIGATING{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-border)}
+    .status-badge.PENDING{background:var(--surface2);color:var(--text3);border:1px solid var(--border)}
+    .info-card{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:11px 13px}
+    .info-card-title{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+    .info-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+    .info-row:last-child{margin-bottom:0}
+    .info-key{font-size:12px;color:var(--text3)}
+    .info-val{font-size:12px;font-weight:500;color:var(--text);text-align:right;max-width:160px;word-break:break-word}
+    .tag-list{display:flex;flex-wrap:wrap;gap:5px}
+    .entity-tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+    .connected-tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;font-family:monospace;background:rgba(0,122,255,.08);color:var(--accent);border:1px solid rgba(0,122,255,.2);cursor:pointer}
+    .connected-tag:hover{background:rgba(0,122,255,.15)}
+    .verdict-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:11px 13px;font-size:12px;color:var(--text2);line-height:1.65;white-space:pre-wrap;font-family:monospace;max-height:180px;overflow-y:auto}
+    .actions{display:flex;flex-direction:column;gap:7px}
+    .action-btn{padding:9px 14px;border-radius:var(--radius-sm);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s;text-align:center}
+    .action-btn:hover{opacity:.82}
+    .action-btn.danger{background:var(--red);color:#fff}
+    .action-btn.success{background:var(--green);color:#fff}
+    .action-btn.warn{background:var(--orange);color:#fff}
+    .action-btn.ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:rgba(128,128,128,.25);border-radius:10px}
+  </style>
+</head>
+<body>
+
+<div class="titlebar">
+  <div class="brand"><div class="brand-icon">🔍</div>FraudGraph</div>
+  <div class="tabs">
+    <button class="tab active" onclick="showView('client',this)">Submit Claim</button>
+    <button class="tab" onclick="showView('admin',this)">Dashboard</button>
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()" id="themeBtn">🌙 Dark</button>
+</div>
+
+<!-- CLIENT -->
+<div id="view-client" class="view active">
+  <div class="client-wrap">
+    <div class="client-header">
+      <h1>Submit a Motor Insurance Claim</h1>
+      <p>Complete the form below. Your claim will be reviewed within 24 hours.</p>
+    </div>
+    <div id="form-card" class="form-card">
+      <div class="form-section">
+        <div class="section-label">Claimant Information</div>
+        <div class="form-row single"><div class="form-group"><label>Full Name *</label><input type="text" id="claimantName" placeholder="e.g. Nagy János"></div></div>
+        <div class="form-row">
+          <div class="form-group"><label>Incident Date *</label><input type="date" id="incidentDate"></div>
+          <div class="form-group"><label>Claim Amount (€) *</label><input type="number" id="claimAmount" placeholder="2500"></div>
+        </div>
+        <div class="form-row single"><div class="form-group"><label>Incident Location</label><input type="text" id="incidentLocation" placeholder="e.g. Budapest, Váci út"></div></div>
+        <div class="form-row single" style="margin-bottom:0"><div class="form-group"><label>Description *</label><textarea id="incidentDescription" placeholder="Describe what happened..."></textarea></div></div>
+      </div>
+      <div class="form-divider"></div>
+      <div class="form-section">
+        <div class="section-label">Involved Parties</div>
+        <div class="form-row">
+          <div class="form-group"><label>Witness Name</label><input type="text" id="witnessName" placeholder="Full name"></div>
+          <div class="form-group"><label>Repair Garage</label><input type="text" id="garageName" placeholder="Garage name"></div>
+        </div>
+        <div class="form-row" style="margin-bottom:0">
+          <div class="form-group"><label>Legal Representative</label><input type="text" id="lawyerName" placeholder="Lawyer or firm"></div>
+          <div class="form-group"><label>Medical Examiner</label><input type="text" id="doctorName" placeholder="Doctor or clinic"></div>
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="submit-btn" id="submitBtn" onclick="submitClaim()">Submit Claim</button>
+        <div class="demo-row">
+          <button class="demo-btn clean" onclick="fillClean()">✓ Fill clean demo claim</button>
+          <button class="demo-btn fraud" onclick="fillFraud()">⚠ Fill fraud ring claim</button>
+        </div>
+      </div>
+    </div>
+    <div id="success-card" class="success-card">
+      <div class="success-icon">✓</div>
+      <h2>Claim Submitted</h2>
+      <p>Your claim has been received and is being processed.</p>
+      <div class="ref-pill" id="successRef">CLM-000</div><br>
+      <button class="submit-btn" style="max-width:200px;margin:0 auto;display:block" onclick="resetForm()">Submit Another</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="view-admin" class="view">
+  <div class="admin-layout">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title">Overview</div>
+        <div class="stats-row">
+          <div class="stat-item red"><div class="stat-num" id="stat-high">0</div><div class="stat-label">High Risk</div></div>
+          <div class="stat-item orange"><div class="stat-num" id="stat-med">0</div><div class="stat-label">Review</div></div>
+          <div class="stat-item green"><div class="stat-num" id="stat-low">0</div><div class="stat-label">Approved</div></div>
+        </div>
+      </div>
+      <div class="claims-list" id="claims-list"></div>
+    </div>
+
+    <div class="resize-handle" id="rh-left"></div>
+
+    <div class="graph-area">
+      <div class="graph-toolbar">
+        <span class="graph-toolbar-title">Social Network Graph</span>
+        <div class="graph-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>High Risk</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Medium</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Clean</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div>Witness</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>Garage</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Lawyer</div>
+        </div>
+      </div>
+      <div id="network-container"></div>
+    </div>
+
+    <div class="resize-handle" id="rh-right"></div>
+
+    <div class="detail-panel">
+      <div class="detail-header">Claim Detail</div>
+      <div class="detail-empty" id="detail-empty">
+        <div style="font-size:28px">🔍</div>
+        <div style="font-size:13px;line-height:1.6">Select a claim to view<br>the fraud analysis</div>
+      </div>
+      <div id="detail-body" class="detail-body" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8080/api';
+  let allClaims = [], visNet = null, selectedId = null, isDark = false;
+
+  // ── THEME ──
+  function toggleTheme() {
+    isDark = !isDark;
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.getElementById('themeBtn').textContent = isDark ? '☀️ Light' : '🌙 Dark';
+    if (visNet) { visNet.destroy(); visNet = null; buildGraph(); }
+  }
+
+  // ── VIEWS ──
+  function showView(v, btn) {
+    document.querySelectorAll('.view').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.getElementById('view-' + v).classList.add('active');
+    btn.classList.add('active');
+    if (v === 'admin') loadAdmin();
+  }
+
+  // ── DEMO FILL ──
+  function fillClean() {
+    document.getElementById('claimantName').value = 'Nagy Zsolt';
+    document.getElementById('incidentDate').value = '2024-11-14';
+    document.getElementById('claimAmount').value = '1800';
+    document.getElementById('incidentLocation').value = 'Debrecen, Piac utca';
+    document.getElementById('incidentDescription').value = 'Rear-end collision at traffic light. Minor bumper damage. No injuries.';
+    document.getElementById('witnessName').value = 'Fekete Péter';
+    document.getElementById('garageName').value = 'Debreceni Autószerelő Kft.';
+    document.getElementById('lawyerName').value = 'Dr. Vásárhelyi & Partners';
+    document.getElementById('doctorName').value = 'Dr. Horváth Katalin';
+  }
+  function fillFraud() {
+    document.getElementById('claimantName').value = 'Németh Richárd';
+    document.getElementById('incidentDate').value = '2024-12-03';
+    document.getElementById('claimAmount').value = '4200';
+    document.getElementById('incidentLocation').value = 'Budapest, Rákóczi út';
+    document.getElementById('incidentDescription').value = 'T-bone collision at junction. Significant damage. Whiplash reported.';
+    document.getElementById('witnessName').value = 'Kovács János';
+    document.getElementById('garageName').value = 'AutoFix Budapest Kft';
+    document.getElementById('lawyerName').value = 'Dr. Szabó Law Office';
+    document.getElementById('doctorName').value = 'Dr. Rácz Béla';
+  }
+
+  // ── SUBMIT ──
+  async function submitClaim() {
+    const btn = document.getElementById('submitBtn');
+    const claimantName = document.getElementById('claimantName').value.trim();
+    const incidentDate = document.getElementById('incidentDate').value;
+    const claimAmount = document.getElementById('claimAmount').value;
+    const incidentDescription = document.getElementById('incidentDescription').value.trim();
+    if (!claimantName || !incidentDate || !claimAmount || !incidentDescription) { alert('Fill required fields'); return; }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Analysing…';
+    try {
+      const res = await fetch(`${API}/claims/submit`, {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({
+          claimantName, incidentDate, incidentDescription,
+          claimAmount: parseFloat(claimAmount),
+          witnessName: document.getElementById('witnessName').value.trim() || null,
+          garageName: document.getElementById('garageName').value.trim() || null,
+          lawyerName: document.getElementById('lawyerName').value.trim() || null,
+          doctorName: document.getElementById('doctorName').value.trim() || null,
+          incidentLocation: document.getElementById('incidentLocation').value.trim() || null,
+        })
+      });
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const claim = await res.json();
+      document.getElementById('form-card').style.display = 'none';
+      document.getElementById('success-card').style.display = 'block';
+      document.getElementById('successRef').textContent = claim.claimReference;
+    } catch(e) {
+      alert('Error: ' + e.message);
+      btn.disabled = false; btn.innerHTML = 'Submit Claim';
+    }
+  }
+  function resetForm() {
+    ['claimantName','witnessName','garageName','lawyerName','doctorName','incidentLocation','incidentDate','claimAmount','incidentDescription']
+            .forEach(id => document.getElementById(id).value = '');
+    document.getElementById('form-card').style.display = 'block';
+    document.getElementById('success-card').style.display = 'none';
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = false; btn.innerHTML = 'Submit Claim';
+  }
+
+  // ── ADMIN LOAD ──
+  async function loadAdmin() {
+    try {
+      const r = await fetch(`${API}/claims/all`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      allClaims = await r.json();
+      renderList();
+      updateStats();
+      if (!visNet) {
+        // First time or after destroy - build the graph
+        setTimeout(buildGraph, 100);
+      }
+      if (selectedId) { const c = allClaims.find(x => x.id === selectedId); if (c) renderDetail(c); }
+    } catch(e) {
+      document.getElementById('claims-list').innerHTML = '<div style="padding:16px;color:var(--red);font-size:12px">⚠ ' + e.message + '</div>';
+    }
+  }
+
+  function updateStats() {
+    document.getElementById('stat-high').textContent = allClaims.filter(c => c.riskLevel === 'HIGH').length;
+    document.getElementById('stat-med').textContent  = allClaims.filter(c => c.riskLevel === 'MEDIUM').length;
+    document.getElementById('stat-low').textContent  = allClaims.filter(c => c.riskLevel === 'LOW').length;
+  }
+
+  // ── SIDEBAR LIST ──
+  function renderList() {
+    const el = document.getElementById('claims-list');
+    el.innerHTML = '';
+    allClaims.forEach((c, i) => {
+      const d = document.createElement('div');
+      d.className = 'claim-item' + (c.id === selectedId ? ' active' : '');
+      d.setAttribute('data-id', c.id);
+      d.onclick = () => select(c.id);
+      d.innerHTML = `
+      <div class="risk-dot ${c.riskLevel||'LOW'}"></div>
+      <div class="claim-meta">
+        <div class="claim-ref">${c.claimReference}${i===0&&!c.demoSeed?'<span class="new-tag">NEW</span>':''}</div>
+        <div class="claim-name">${c.claimantName}</div>
+        <div class="claim-amt">€${c.claimAmount?.toLocaleString()||'—'}</div>
+      </div>
+      <div class="risk-tag ${c.riskLevel||'LOW'}">${c.riskLevel||'LOW'}</div>`;
+      el.appendChild(d);
+    });
+  }
+
+  // ── SELECT ──
+  function select(id) {
+    selectedId = id;
+    document.querySelectorAll('.claim-item').forEach(el =>
+            el.classList.toggle('active', parseInt(el.getAttribute('data-id')) === id));
+    const c = allClaims.find(x => x.id === id);
+    if (!c) return;
+    if (visNet) {
+      try { visNet.selectNodes([c.claimReference]); visNet.focus(c.claimReference, {animation:true,scale:1.3}); } catch(e) {}
+    }
+    renderDetail(c);
+  }
+  function selectByRef(ref) {
+    const c = allClaims.find(x => x.claimReference === ref.trim());
+    if (c) select(c.id);
+  }
+
+  // ── BUILD GRAPH ──
+  function buildGraph() {
+    const container = document.getElementById('network-container');
+    const w = container.offsetWidth;
+    const h = container.offsetHeight;
+
+    if (!container || w === 0 || h === 0) {
+      setTimeout(buildGraph, 200);
+      return;
+    }
+
+    // Don't rebuild if network already exists and is healthy
+    if (visNet && w > 200) {
+      // Just update the data
+      return;
+    }
+
+    const dark = isDark;
+    const nodeColors = {
+      claim: { HIGH:'#ff453a', MEDIUM:'#ff9f0a', LOW:'#34c759', DEFAULT:'#8e8e93' },
+      witness:'#6366f1', garage:'#ff9500', lawyer:'#34c759', doctor:'#8e8e93'
+    };
+    const fontColor = dark ? '#ffffff' : '#1c1c1e';
+
+    const nodesArr = [];
+    const edgesArr = [];
+    const edgeSet = new Set();
+    const nodeSet = {};
+
+    allClaims.forEach(claim => {
+      const col = nodeColors.claim[claim.riskLevel] || nodeColors.claim.DEFAULT;
+      nodeSet[claim.claimReference] = true;
+      nodesArr.push({
+        id: claim.claimReference,
+        label: claim.claimantName + '\n' + claim.claimReference,
+        color: { background: col, border: col, highlight: { background: col, border: dark ? '#fff' : '#000' } },
+        shape: 'dot', size: 18,
+        font: { color: fontColor, size: 11, face: 'Inter' },
+        shadow: claim.riskLevel === 'HIGH' ? { enabled: true, color: 'rgba(255,69,58,0.5)', size: 10 } : false
+      });
+
+      (claim.verdictDetails || []).forEach(d => {
+        const eid = d.entityType[0] + ':' + d.entityValue;
+        const type = d.entityType.toLowerCase();
+        if (!nodeSet[eid]) {
+          nodeSet[eid] = true;
+          nodesArr.push({
+            id: eid, label: d.entityValue,
+            color: { background: nodeColors[type]||'#8e8e93', border: nodeColors[type]||'#8e8e93' },
+            shape: type==='witness'?'diamond':type==='garage'?'square':type==='lawyer'?'triangle':'star',
+            size: 13,
+            font: { color: fontColor, size: 10, face: 'Inter' }
+          });
+        }
+        const key = claim.claimReference + '→' + eid;
+        if (!edgeSet.has(key)) {
+          edgeSet.add(key);
+          edgesArr.push({ from: claim.claimReference, to: eid,
+            color: { color: nodeColors[type]||'#8e8e93', opacity: 0.7 }, width: 1.5 });
+        }
+      });
+    });
+
+    console.log('Nodes:', nodesArr.length, 'Edges:', edgesArr.length);
+
+    if (visNet) { visNet.destroy(); visNet = null; }
+
+    visNet = new vis.Network(
+            container,
+            { nodes: new vis.DataSet(nodesArr), edges: new vis.DataSet(edgesArr) },
+            {
+              physics: { stabilization: { iterations: 200 },
+                barnesHut: { gravitationalConstant: -5000, springLength: 100 } },
+              interaction: { hover: true, zoomView: true, dragView: true },
+              nodes: { borderWidth: 1.5 }
+            }
+    );
+
+    visNet.once('stabilizationIterationsDone', () => {
+      console.log('Graph stabilized, fitting...');
+      visNet.fit({ animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+    });
+
+    visNet.on('click', params => {
+      if (params.nodes.length > 0) {
+        const c = allClaims.find(x => x.claimReference === params.nodes[0]);
+        if (c) select(c.id);
+      }
+    });
+  }
+
+  // ── DETAIL ──
+  function renderDetail(claim) {
+    document.getElementById('detail-empty').style.display = 'none';
+    const body = document.getElementById('detail-body');
+    body.style.display = 'flex';
+    const icons = {HIGH:'🚨',MEDIUM:'⚠️',LOW:'✅'};
+    const texts = {HIGH:'Fraud Ring Detected',MEDIUM:'Partial Match',LOW:'No Connections'};
+    const refs = claim.connectedClaimReferences || [];
+    const dets = claim.verdictDetails || [];
+    body.innerHTML = `
+    <div class="risk-banner ${claim.riskLevel||'LOW'}">
+      <div class="risk-banner-icon">${icons[claim.riskLevel]||'✅'}</div>
+      <div style="flex:1">
+        <div class="risk-banner-title">${claim.riskLevel||'LOW'} RISK — ${texts[claim.riskLevel]||'No Connections'}</div>
+        <div class="risk-banner-sub">Claim ${claim.claimReference}</div>
+      </div>
+      <span class="status-badge ${claim.status}">${claim.status}</span>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">Claim Information</div>
+      <div class="info-row"><span class="info-key">Claimant</span><span class="info-val">${claim.claimantName}</span></div>
+      <div class="info-row"><span class="info-key">Amount</span><span class="info-val">€${claim.claimAmount?.toLocaleString()}</span></div>
+      <div class="info-row"><span class="info-key">Date</span><span class="info-val">${claim.incidentDate||'—'}</span></div>
+      <div class="info-row"><span class="info-key">Location</span><span class="info-val">${claim.incidentLocation||'—'}</span></div>
+    </div>
+    ${claim.witnessName||claim.garageName||claim.lawyerName||claim.doctorName?`
+    <div class="info-card">
+      <div class="info-card-title">Involved Parties</div>
+      ${claim.witnessName?`<div class="info-row"><span class="info-key">Witness</span><span class="info-val">${claim.witnessName}</span></div>`:''}
+      ${claim.garageName?`<div class="info-row"><span class="info-key">Garage</span><span class="info-val">${claim.garageName}</span></div>`:''}
+      ${claim.lawyerName?`<div class="info-row"><span class="info-key">Lawyer</span><span class="info-val">${claim.lawyerName}</span></div>`:''}
+      ${claim.doctorName?`<div class="info-row"><span class="info-key">Doctor</span><span class="info-val">${claim.doctorName}</span></div>`:''}
+    </div>`:''}
+    ${dets.length?`<div class="info-card"><div class="info-card-title">⚠ Flagged Entities</div><div class="tag-list">${dets.map(d=>`<span class="entity-tag">${d.entityType}: ${d.entityValue} (×${d.occurrenceCount})</span>`).join('')}</div></div>`:''}
+    ${refs.length?`<div class="info-card"><div class="info-card-title">Connected Claims</div><div class="tag-list">${refs.map(r=>`<span class="connected-tag" onclick="selectByRef('${r}')">${r}</span>`).join('')}</div></div>`:''}
+    <div>
+      <div style="font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">AI Analysis</div>
+      <div class="verdict-box">${claim.verdictSummary||'No analysis available.'}</div>
+    </div>
+    <div class="actions">
+      ${claim.riskLevel==='HIGH'?`<button class="action-btn danger" onclick="updateStatus(${claim.id},'ESCALATED')">🚨 Escalate to Fraud Team</button>`:''}
+      ${claim.riskLevel==='LOW'?`<button class="action-btn success" onclick="updateStatus(${claim.id},'APPROVED')">✅ Approve & Release Payment</button>`:''}
+      ${claim.riskLevel==='MEDIUM'?`<button class="action-btn warn" onclick="updateStatus(${claim.id},'INVESTIGATING')">🔍 Assign to Investigator</button>`:''}
+      ${claim.riskLevel!=='LOW'?`<button class="action-btn ghost" onclick="updateStatus(${claim.id},'APPROVED')">Override — Approve Anyway</button>`:''}
+    </div>`;
+  }
+
+  // ── STATUS UPDATE ──
+  async function updateStatus(id, status) {
+    try {
+      const res = await fetch(`${API}/claims/${id}/status`, {
+        method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({status})
+      });
+      const updated = await res.json();
+      const idx = allClaims.findIndex(c => c.id === id);
+      if (idx !== -1) allClaims[idx] = updated;
+      renderList(); renderDetail(updated); updateStats();
+    } catch(e) { alert('Failed to update.'); }
+  }
+
+  // ── RESIZE HANDLES ──
+  function initResize() {
+    function makeHandle(handleId, getPanel, side) {
+      const handle = document.getElementById(handleId);
+      const layout = document.querySelector('.admin-layout');
+      if (!handle || !layout) return;
+      handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        handle.classList.add('active');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        const cols = getComputedStyle(layout).gridTemplateColumns.split(' ').map(v => parseFloat(v));
+        const startX = e.clientX;
+        const startSize = parseFloat(getComputedStyle(getPanel()).width);
+        const onMove = e => {
+          const dx = e.clientX - startX;
+          let newSize;
+          if (side === 'left') {
+            newSize = Math.max(180, Math.min(500, startSize + dx));
+            layout.style.gridTemplateColumns = `${newSize}px 5px 1fr 5px ${cols[4]}px`;
+          } else {
+            newSize = Math.max(200, Math.min(600, startSize - dx));
+            layout.style.gridTemplateColumns = `${cols[0]}px 5px 1fr 5px ${newSize}px`;
+          }
+          if (visNet) visNet.redraw();
+        };
+        const onUp = () => {
+          handle.classList.remove('active');
+          document.body.style.cursor = '';
+          document.body.style.userSelect = '';
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          if (visNet) { setTimeout(() => { visNet.redraw(); visNet.fit(); }, 100); }
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    }
+    makeHandle('rh-left',  () => document.querySelector('.sidebar'),       'left');
+    makeHandle('rh-right', () => document.querySelector('.detail-panel'),  'right');
+  }
+
+  document.addEventListener('DOMContentLoaded', initResize);
+
+  // ── POLL ──
+  setInterval(() => {
+    if (document.getElementById('view-admin').classList.contains('active')) loadAdmin();
+  }, 4000);
+</script>
+</body>
+</html>
