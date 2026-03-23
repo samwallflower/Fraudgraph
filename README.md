@@ -63,3 +63,9 @@ mvn spring-boot:run
 # Open
 http://localhost:8080
 ```
+## Images from the demo
+<img width="2732" height="1187" alt="live_demo1" src="https://github.com/user-attachments/assets/acc983cd-10f0-44a3-96fe-e55464be961a" />
+
+<img width="1366" height="588" alt="Screenshot 2026-03-18 213643" src="https://github.com/user-attachments/assets/d0297742-50b5-4a68-ad32-a3e5337a320c" />
+
+
