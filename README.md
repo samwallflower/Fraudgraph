@@ -24,7 +24,7 @@ The risk engine scores each claim based on how many shared entities it has and h
 
 ## Tech Stack
 
-- **Backend** — Java 17, Spring Boot 3.2, Spring Data JPA, Hibernate, Lombok
+- **Backend** — Java 17, Spring Boot 3.2 
 - **Database** — MySQL
 - **API** — REST via Spring MVC
 - **Frontend** — HTML, CSS, Vanilla JavaScript
@@ -38,9 +38,6 @@ The risk engine scores each claim based on how many shared entities it has and h
 - Interactive network graph — nodes coloured by risk level, shaped by entity type
 - Investigator dashboard with claim detail, flagged entities, and connected claim references
 - One-click escalation and status management
-- Dark mode with localStorage persistence
-- Resizable dashboard panels
-- Demo fill buttons for instant testing
 
 ---
 
